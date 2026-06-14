@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17151f">
+  <meta name="description" content="FocusFlow is an offline-first study timer and progress tracker.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>FocusFlow</title>
+  <style>
+    :root {
+      --ink: #17151f;
+      --muted: #716d79;
+      --line: #dedbe4;
+      --paper: #f7f5f1;
+      --card: #fffefd;
+      --purple: #6558d3;
+      --purple-soft: #ece9ff;
+      --lime: #dff36a;
+      --orange: #ff9f66;
+      --shadow: 0 18px 50px rgba(39, 32, 60, .09);
+      --radius: 26px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 5%, rgba(223, 243, 106, .22), transparent 22rem),
+        radial-gradient(circle at 95% 35%, rgba(101, 88, 211, .12), transparent 28rem),
+        var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 52px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 30px; }
+    .brand { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 850; letter-spacing: -.04em; }
+    .brand-mark {
+      width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center;
+      background: var(--ink); color: var(--lime); box-shadow: 0 8px 20px rgba(23,21,31,.18);
+    }
+    .brand-mark svg { width: 24px; }
+    .top-actions { display: flex; gap: 10px; }
+    .icon-btn, .ghost-btn, .primary-btn {
+      border: 0; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    .icon-btn:hover, .ghost-btn:hover, .primary-btn:hover { transform: translateY(-2px); }
+    .icon-btn { width: 42px; height: 42px; border-radius: 50%; background: var(--card); box-shadow: var(--shadow); font-size: 18px; }
+    .install-btn { display: none; }
+    .hero { display: grid; grid-template-columns: 1.22fr .78fr; gap: 22px; margin-bottom: 22px; }
+    .card { background: rgba(255,254,253,.9); border: 1px solid rgba(222,219,228,.75); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .timer-card { min-height: 500px; padding: 34px; display: grid; grid-template-columns: 1fr 280px; align-items: center; gap: 24px; overflow: hidden; position: relative; }
+    .timer-card::after {
+      content: ""; position: absolute; width: 240px; height: 240px; border-radius: 50%; right: -110px; top: -110px;
+      border: 45px solid var(--purple-soft); opacity: .7;
+    }
+    .eyebrow { margin: 0 0 12px; color: var(--purple); font-weight: 800; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 0; max-width: 620px; font-size: clamp(42px, 6vw, 76px); line-height: .98; letter-spacing: -.065em; }
+    .hero-copy { max-width: 520px; color: var(--muted); margin: 20px 0 28px; font-size: 16px; line-height: 1.65; }
+    .session-controls { display: flex; flex-wrap: wrap; gap: 10px; }
+    .select-wrap, .goal-wrap { background: #f0eef4; border-radius: 16px; padding: 4px 12px; display: flex; align-items: center; gap: 8px; }
+    .select-wrap select, .goal-wrap input { border: 0; outline: 0; background: transparent; min-height: 44px; color: var(--ink); font-weight: 750; }
+    .goal-wrap input { width: 54px; text-align: center; }
+    .primary-btn { background: var(--ink); color: white; border-radius: 16px; min-height: 52px; padding: 0 24px; font-weight: 800; box-shadow: 0 12px 24px rgba(23,21,31,.18); }
+    .ring-wrap { position: relative; width: 260px; height: 260px; display: grid; place-items: center; z-index: 1; }
+    .ring-wrap svg { position: absolute; inset: 0; width: 100%; transform: rotate(-90deg); }
+    .ring-bg, .ring-progress { fill: none; stroke-width: 12; }
+    .ring-bg { stroke: #e9e6ed; }
+    .ring-progress { stroke: var(--purple); stroke-linecap: round; transition: stroke-dashoffset .6s linear, stroke .2s ease; }
+    .ring-content { text-align: center; }
+    .timer-display { display: block; font-size: 46px; font-weight: 850; letter-spacing: -.055em; font-variant-numeric: tabular-nums; }
+    .timer-label { color: var(--muted); font-size: 13px; font-weight: 700; }
+
+    .side-stack { display: grid; gap: 22px; }
+    .streak-card { min-height: 238px; padding: 28px; background: var(--ink); color: white; position: relative; overflow: hidden; }
+    .streak-card::after { content: ""; position: absolute; width: 130px; height: 130px; right: -20px; bottom: -40px; border-radius: 50%; background: var(--lime); }
+    .streak-label { color: #bdb8c8; font-size: 13px; font-weight: 700; }
+    .streak-number { font-size: 82px; font-weight: 900; line-height: 1; letter-spacing: -.08em; margin: 18px 0 5px; }
+    .streak-unit { color: var(--lime); font-weight: 800; }
+    .today-card { padding: 26px; min-height: 240px; }
+    .section-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+    .section-label h2 { margin: 0; font-size: 18px; letter-spacing: -.03em; }
+    .section-label span { color: var(--muted); font-size: 13px; }
+    .big-stat { font-size: 48px; font-weight: 850; letter-spacing: -.06em; }
+    .big-stat small { font-size: 18px; color: var(--muted); letter-spacing: 0; }
+    .mini-progress { height: 10px; border-radius: 99px; background: #ece9ef; overflow: hidden; margin: 18px 0 10px; }
+    .mini-progress span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--purple); transition: width .4s; }
+    .support { color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+    .dashboard { display: grid; grid-template-columns: 1.35fr .65fr; gap: 22px; }
+    .chart-card, .subjects-card, .history-card { padding: 28px; }
+    .chart { height: 220px; display: flex; align-items: end; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding: 15px 4px 0; }
+    .bar-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: end; align-items: center; gap: 8px; min-width: 0; }
+    .bar-value { font-size: 11px; color: var(--muted); }
+    .bar { width: min(38px, 72%); min-height: 4px; border-radius: 10px 10px 2px 2px; background: var(--purple-soft); transition: height .45s ease; }
+    .bar.today { background: var(--purple); }
+    .bar-day { font-size: 11px; color: var(--muted); font-weight: 700; }
+    .subject-list, .history-list { display: grid; gap: 12px; }
+    .subject-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; }
+    .subject-dot { width: 12px; height: 12px; border-radius: 4px; }
+    .subject-meta strong, .history-meta strong { display: block; font-size: 14px; }
+    .subject-meta span, .history-meta span { color: var(--muted); font-size: 12px; }
+    .subject-time { font-weight: 800; font-size: 14px; }
+    .manage-btn { border: 0; background: transparent; color: var(--purple); font-weight: 800; cursor: pointer; }
+    .history-card { grid-column: 1 / -1; }
+    .history-row { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid #ece9ef; }
+    .history-row:last-child { border: 0; }
+    .history-icon { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; font-weight: 900; }
+    .history-duration { font-weight: 850; }
+    .delete-session { border: 0; background: transparent; cursor: pointer; color: #a19ca8; font-size: 16px; }
+    .empty { padding: 28px 0; color: var(--muted); text-align: center; }
+
+    .modal, .focus-overlay { position: fixed; inset: 0; z-index: 30; display: none; }
+    .modal.open, .focus-overlay.open { display: grid; }
+    .modal { place-items: center; padding: 18px; background: rgba(23,21,31,.48); backdrop-filter: blur(10px); }
+    .modal-panel { width: min(520px, 100%); max-height: 85vh; overflow: auto; background: var(--card); border-radius: 28px; padding: 28px; box-shadow: 0 30px 90px rgba(0,0,0,.25); }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+    .modal-head h2 { margin: 0; font-size: 24px; }
+    .subject-editor { display: grid; gap: 10px; }
+    .editor-row { display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; }
+    .editor-row input[type="color"] { width: 38px; height: 38px; border: 0; padding: 0; border-radius: 12px; overflow: hidden; background: transparent; }
+    .editor-row input[type="text"], .new-subject input[type="text"] { width: 100%; border: 1px solid var(--line); border-radius: 13px; padding: 11px 12px; outline: 0; }
+    .new-subject { display: grid; grid-template-columns: 44px 1fr auto; gap: 9px; margin-top: 18px; }
+    .new-subject input[type="color"] { width: 44px; height: 44px; border: 0; background: transparent; }
+    .ghost-btn { min-height: 44px; padding: 0 16px; border-radius: 14px; background: var(--purple-soft); color: var(--purple); font-weight: 800; }
+
+    .focus-overlay { background: var(--ink); color: white; place-items: center; padding: 24px; }
+    .focus-inner { width: min(720px, 100%); text-align: center; }
+    .focus-subject { color: var(--lime); font-weight: 850; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; }
+    .focus-time { margin: 24px 0 6px; font-size: clamp(76px, 18vw, 150px); line-height: 1; font-weight: 900; letter-spacing: -.08em; font-variant-numeric: tabular-nums; }
+    .focus-goal { color: #aaa5b4; }
+    .focus-message { margin: 56px auto 30px; color: #d2ced8; max-width: 430px; line-height: 1.6; }
+    .focus-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .focus-actions button { min-height: 50px; border-radius: 16px; padding: 0 22px; border: 1px solid #3a3742; background: #26232e; color: white; cursor: pointer; font-weight: 800; }
+    .focus-actions .finish { background: var(--lime); color: var(--ink); border-color: var(--lime); }
+    .toast { position: fixed; z-index: 50; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; background: var(--ink); color: white; padding: 12px 18px; border-radius: 14px; font-weight: 750; transition: .25s; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 900px) {
+      .hero, .dashboard { grid-template-columns: 1fr; }
+      .timer-card { grid-template-columns: 1fr; text-align: center; }
+      .hero-copy { margin-inline: auto; }
+      .session-controls { justify-content: center; }
+      .ring-wrap { grid-row: 1; margin: 0 auto; }
+      .side-stack { grid-template-columns: 1fr 1fr; }
+      .history-card { grid-column: auto; }
+    }
+    @media (max-width: 600px) {
+      .shell { width: min(100% - 20px, 1180px); padding-top: 16px; }
+      .timer-card, .chart-card, .subjects-card, .history-card { padding: 22px; }
+      .timer-card { min-height: 0; }
+      .ring-wrap { width: 215px; height: 215px; }
+      .timer-display { font-size: 40px; }
+      .side-stack { grid-template-columns: 1fr; }
+      .session-controls > * { width: 100%; }
+      .select-wrap select { flex: 1; }
+      .primary-btn { width: 100%; }
+      .history-row { grid-template-columns: auto 1fr auto; }
+      .delete-session { display: none; }
+      .topbar { margin-bottom: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4V4Z" stroke="currentColor" stroke-width="2"/><path d="M9 8h6M9 12h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </span>
+        FocusFlow
+      </div>
+      <div class="top-actions">
+        <button class="ghost-btn install-btn" id="installBtn">Install app</button>
+        <button class="icon-btn" id="subjectsBtn" aria-label="Manage subjects">+</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <article class="card timer-card">
+        <div>
+          <p class="eyebrow">Deep work, made visible</p>
+          <h1>Make this hour count.</h1>
+          <p class="hero-copy">Choose your subject, set a target, and give one thing your full attention. Your progress stays on this device, even when you are offline.</p>
+          <div class="session-controls">
+            <label class="select-wrap"><span aria-hidden="true">●</span><select id="subjectSelect" aria-label="Study subject"></select></label>
+            <label class="goal-wrap"><input id="goalInput" type="number" min="1" max="240" value="25" aria-label="Goal minutes"><span>min goal</span></label>
+            <button class="primary-btn" id="startBtn">Start focus session</button>
+          </div>
+        </div>
+        <div class="ring-wrap" aria-label="Session timer">
+          <svg viewBox="0 0 260 260" aria-hidden="true">
+            <circle class="ring-bg" cx="130" cy="130" r="112"/>
+            <circle class="ring-progress" id="ringProgress" cx="130" cy="130" r="112"/>
+          </svg>
+          <div class="ring-content">
+            <span class="timer-display" id="timerDisplay">25:00</span>
+            <span class="timer-label">ready when you are</span>
+          </div>
+        </div>
+      </article>
+
+      <div class="side-stack">
+        <article class="card streak-card">
+          <span class="streak-label">Current study streak</span>
+          <div class="streak-number" id="streakCount">0</div>
+          <div class="streak-unit">days in flow</div>
+        </article>
+        <article class="card today-card">
+          <div class="section-label"><h2>Today</h2><span id="todaySessions">0 sessions</span></div>
+          <div class="big-stat"><span id="todayMinutes">0</span><small> min</small></div>
+          <div class="mini-progress"><span id="todayProgress"></span></div>
+          <p class="support" id="todaySupport">Start a session to build momentum.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="dashboard">
+      <article class="card chart-card">
+        <div class="section-label"><h2>Last 7 days</h2><span id="weekTotal">0 min total</span></div>
+        <div class="chart" id="weekChart" aria-label="Study minutes over the last seven days"></div>
+      </article>
+      <article class="card subjects-card">
+        <div class="section-label"><h2>By subject</h2><button class="manage-btn" id="manageBtn">Manage</button></div>
+        <div class="subject-list" id="subjectBreakdown"></div>
+      </article>
+      <article class="card history-card">
+        <div class="section-label"><h2>Recent sessions</h2><span>Last 30</span></div>
+        <div class="history-list" id="historyList"></div>
+      </article>
+    </section>
+  </main>
+
+  <section class="focus-overlay" id="focusOverlay" aria-live="polite">
+    <div class="focus-inner">
+      <div class="focus-subject" id="focusSubject">Mathematics</div>
+      <div class="focus-time" id="focusTime">25:00</div>
+      <div class="focus-goal" id="focusGoal">25 minute goal</div>
+      <p class="focus-message">Stay with the work in front of you. You can pause when you need to, but try not to leave the session.</p>
+      <div class="focus-actions">
+        <button id="pauseBtn">Pause</button>
+        <button id="cancelBtn">Cancel</button>
+        <button class="finish" id="finishBtn">Finish session</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="modal" id="subjectModal" role="dialog" aria-modal="true" aria-labelledby="subjectModalTitle">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <h2 id="subjectModalTitle">Your subjects</h2>
+        <button class="icon-btn" id="closeModal" aria-label="Close">×</button>
+      </div>
+      <div class="subject-editor" id="subjectEditor"></div>
+      <div class="new-subject">
+        <input type="color" id="newSubjectColor" value="#ff9f66" aria-label="Subject color">
+        <input type="text" id="newSubjectName" maxlength="30" placeholder="New subject name">
+        <button class="ghost-btn" id="addSubjectBtn">Add</button>
+      </div>
+    </div>
+  </section>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const DEFAULT_SUBJECTS = [
+      { id: "mathematics", name: "Mathematics", color: "#6558d3" },
+      { id: "science", name: "Science", color: "#2d9b77" },
+      { id: "languages", name: "Languages", color: "#ff9f66" },
+      { id: "reading", name: "Reading", color: "#d34f72" }
+    ];
+    const STORAGE_KEY = "focusflow-v1";
+    const CIRCUMFERENCE = 2 * Math.PI * 112;
+    const $ = (selector) => document.querySelector(selector);
+    const state = loadState();
+    let timer = null;
+    let deferredInstall = null;
+
+    const els = {
+      subjectSelect: $("#subjectSelect"), goalInput: $("#goalInput"), startBtn: $("#startBtn"),
+      timerDisplay: $("#timerDisplay"), ring: $("#ringProgress"), overlay: $("#focusOverlay"),
+      focusSubject: $("#focusSubject"), focusTime: $("#focusTime"), focusGoal: $("#focusGoal"),
+      pauseBtn: $("#pauseBtn"), cancelBtn: $("#cancelBtn"), finishBtn: $("#finishBtn"),
+      streak: $("#streakCount"), todayMinutes: $("#todayMinutes"), todaySessions: $("#todaySessions"),
+      todayProgress: $("#todayProgress"), todaySupport: $("#todaySupport"), weekChart: $("#weekChart"),
+      weekTotal: $("#weekTotal"), breakdown: $("#subjectBreakdown"), history: $("#historyList"),
+      modal: $("#subjectModal"), editor: $("#subjectEditor"), toast: $("#toast"), installBtn: $("#installBtn")
+    };
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        return {
+          subjects: Array.isArray(saved?.subjects) && saved.subjects.length ? saved.subjects : DEFAULT_SUBJECTS,
+          sessions: Array.isArray(saved?.sessions) ? saved.sessions : [],
+          active: saved?.active || null
+        };
+      } catch {
+        return { subjects: DEFAULT_SUBJECTS, sessions: [], active: null };
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function localDay(date = new Date()) {
+      const copy = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      return copy.toISOString().slice(0, 10);
+    }
+
+    function minutesLabel(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = Math.max(0, seconds % 60);
+      return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+
+    function sessionMinutes(session) {
+      return Math.max(1, Math.round(session.durationSeconds / 60));
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+    }
+
+    function subjectById(id) {
+      return state.subjects.find(subject => subject.id === id) || { id, name: "Archived subject", color: "#8b8792" };
+    }
+
+    function renderSubjectSelect() {
+      const selected = els.subjectSelect.value;
+      els.subjectSelect.innerHTML = state.subjects.map(subject =>
+        `<option value="${escapeHtml(subject.id)}">${escapeHtml(subject.name)}</option>`).join("");
+      if (state.subjects.some(subject => subject.id === selected)) els.subjectSelect.value = selected;
+      updatePreview();
+    }
+
+    function updatePreview() {
+      if (state.active) return;
+      const goal = Math.max(1, Number(els.goalInput.value) || 25);
+      els.timerDisplay.textContent = `${String(goal).padStart(2, "0")}:00`;
+      const color = subjectById(els.subjectSelect.value).color;
+      els.ring.style.stroke = color;
+      els.ring.style.strokeDashoffset = "0";
+    }
+
+    function renderDashboard() {
+      const today = localDay();
+      const todayData = state.sessions.filter(session => session.day === today);
+      const todayMinutes = todayData.reduce((sum, session) => sum + sessionMinutes(session), 0);
+      const dailyGoal = 120;
+      els.todayMinutes.textContent = todayMinutes;
+      els.todaySessions.textContent = `${todayData.length} session${todayData.length === 1 ? "" : "s"}`;
+      els.todayProgress.style.width = `${Math.min(100, todayMinutes / dailyGoal * 100)}%`;
+      els.todaySupport.textContent = todayMinutes
+        ? `${Math.max(0, dailyGoal - todayMinutes)} minutes to your ${dailyGoal}-minute daily target.`
+        : "Start a session to build momentum.";
+      els.streak.textContent = calculateStreak();
+      renderWeek();
+      renderBreakdown();
+      renderHistory();
+    }
+
+    function calculateStreak() {
+      const studied = new Set(state.sessions.map(session => session.day));
+      let date = new Date();
+      if (!studied.has(localDay(date))) date.setDate(date.getDate() - 1);
+      let count = 0;
+      while (studied.has(localDay(date))) {
+        count += 1;
+        date.setDate(date.getDate() - 1);
+      }
+      return count;
+    }
+
+    function renderWeek() {
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setHours(12, 0, 0, 0);
+        date.setDate(date.getDate() - i);
+        const day = localDay(date);
+        const minutes = state.sessions.filter(session => session.day === day)
+          .reduce((sum, session) => sum + sessionMinutes(session), 0);
+        days.push({ day, minutes, label: new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(date) });
+      }
+      const max = Math.max(30, ...days.map(day => day.minutes));
+      const total = days.reduce((sum, day) => sum + day.minutes, 0);
+      els.weekTotal.textContent = `${total} min total`;
+      els.weekChart.innerHTML = days.map((day, index) => `
+        <div class="bar-col" title="${day.minutes} minutes">
+          <span class="bar-value">${day.minutes || ""}</span>
+          <span class="bar ${index === 6 ? "today" : ""}" style="height:${Math.max(3, day.minutes / max * 165)}px"></span>
+          <span class="bar-day">${day.label}</span>
+        </div>`).join("");
+    }
+
+    function renderBreakdown() {
+      const totals = new Map();
+      state.sessions.forEach(session => totals.set(session.subjectId, (totals.get(session.subjectId) || 0) + sessionMinutes(session)));
+      const rows = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+      if (!rows.length) {
+        els.breakdown.innerHTML = `<div class="empty">Your subject mix will appear here.</div>`;
+        return;
+      }
+      const total = rows.reduce((sum, row) => sum + row[1], 0);
+      els.breakdown.innerHTML = rows.map(([id, minutes]) => {
+        const subject = subjectById(id);
+        return `<div class="subject-row">
+          <span class="subject-dot" style="background:${subject.color}"></span>
+          <div class="subject-meta"><strong>${escapeHtml(subject.name)}</strong><span>${Math.round(minutes / total * 100)}% of study time</span></div>
+          <span class="subject-time">${minutes}m</span>
+        </div>`;
+      }).join("");
+    }
+
+    function renderHistory() {
+      const recent = [...state.sessions].sort((a, b) => b.endedAt - a.endedAt).slice(0, 30);
+      if (!recent.length) {
+        els.history.innerHTML = `<div class="empty">Complete your first focus session and it will show up here.</div>`;
+        return;
+      }
+      els.history.innerHTML = recent.map(session => {
+        const subject = subjectById(session.subjectId);
+        const date = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(session.endedAt));
+        return `<div class="history-row">
+          <span class="history-icon" style="background:${subject.color}20;color:${subject.color}">${escapeHtml(subject.name.slice(0, 1))}</span>
+          <div class="history-meta"><strong>${escapeHtml(subject.name)}</strong><span>${date}</span></div>
+          <span class="history-duration">${sessionMinutes(session)} min</span>
+          <button class="delete-session" data-delete="${session.id}" aria-label="Delete session">×</button>
+        </div>`;
+      }).join("");
+    }
+
+    function renderEditor() {
+      els.editor.innerHTML = state.subjects.map(subject => `
+        <div class="editor-row">
+          <input type="color" value="${subject.color}" data-color="${subject.id}" aria-label="${escapeHtml(subject.name)} color">
+          <input type="text" maxlength="30" value="${escapeHtml(subject.name)}" data-name="${subject.id}" aria-label="Subject name">
+          <button class="delete-session" data-remove-subject="${subject.id}" aria-label="Remove subject">×</button>
+        </div>`).join("");
+    }
+
+    function startSession() {
+      if (state.active) return;
+      const goalMinutes = Math.min(240, Math.max(1, Number(els.goalInput.value) || 25));
+      state.active = {
+        subjectId: els.subjectSelect.value,
+        goalSeconds: goalMinutes * 60,
+        elapsedBeforePause: 0,
+        startedAt: Date.now(),
+        running: true
+      };
+      saveState();
+      openFocus();
+    }
+
+    function elapsedSeconds() {
+      if (!state.active) return 0;
+      const live = state.active.running ? Math.floor((Date.now() - state.active.startedAt) / 1000) : 0;
+      return state.active.elapsedBeforePause + live;
+    }
+
+    function updateTimer() {
+      if (!state.active) return;
+      const elapsed = elapsedSeconds();
+      const remaining = Math.max(0, state.active.goalSeconds - elapsed);
+      const text = minutesLabel(remaining);
+      els.timerDisplay.textContent = text;
+      els.focusTime.textContent = text;
+      const progress = Math.min(1, elapsed / state.active.goalSeconds);
+      els.ring.style.strokeDashoffset = String(CIRCUMFERENCE * (1 - progress));
+      if (remaining === 0) finishSession(true);
+    }
+
+    function openFocus() {
+      if (!state.active) return;
+      const subject = subjectById(state.active.subjectId);
+      els.focusSubject.textContent = subject.name;
+      els.focusSubject.style.color = subject.color;
+      els.focusGoal.textContent = `${Math.round(state.active.goalSeconds / 60)} minute goal`;
+      els.ring.style.stroke = subject.color;
+      els.overlay.classList.add("open");
+      els.pauseBtn.textContent = state.active.running ? "Pause" : "Resume";
+      clearInterval(timer);
+      timer = setInterval(updateTimer, 500);
+      updateTimer();
+    }
+
+    function togglePause() {
+      if (!state.active) return;
+      if (state.active.running) {
+        state.active.elapsedBeforePause = elapsedSeconds();
+        state.active.running = false;
+      } else {
+        state.active.startedAt = Date.now();
+        state.active.running = true;
+      }
+      els.pauseBtn.textContent = state.active.running ? "Pause" : "Resume";
+      saveState();
+      updateTimer();
+    }
+
+    function finishSession(auto = false) {
+      if (!state.active) return;
+      const durationSeconds = auto ? state.active.goalSeconds : elapsedSeconds();
+      if (durationSeconds >= 30) {
+        state.sessions.push({
+          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          subjectId: state.active.subjectId,
+          durationSeconds,
+          goalSeconds: state.active.goalSeconds,
+          day: localDay(),
+          endedAt: Date.now()
+        });
+        state.sessions = state.sessions.slice(-200);
+        showToast(auto ? "Goal complete. Beautiful work." : "Session saved.");
+      } else {
+        showToast("Session was too short to save.");
+      }
+      resetActive();
+      renderDashboard();
+    }
+
+    function cancelSession() {
+      if (!state.active) return;
+      resetActive();
+      showToast("Session cancelled.");
+    }
+
+    function resetActive() {
+      clearInterval(timer);
+      timer = null;
+      state.active = null;
+      els.overlay.classList.remove("open");
+      els.ring.style.strokeDashoffset = "0";
+      saveState();
+      updatePreview();
+    }
+
+    function showToast(message) {
+      els.toast.textContent = message;
+      els.toast.classList.add("show");
+      setTimeout(() => els.toast.classList.remove("show"), 2300);
+    }
+
+    function openSubjects() {
+      renderEditor();
+      els.modal.classList.add("open");
+    }
+
+    els.ring.style.strokeDasharray = String(CIRCUMFERENCE);
+    els.ring.style.strokeDashoffset = "0";
+    renderSubjectSelect();
+    renderDashboard();
+    updatePreview();
+
+    els.subjectSelect.addEventListener("change", updatePreview);
+    els.goalInput.addEventListener("input", updatePreview);
+    els.startBtn.addEventListener("click", startSession);
+    els.pauseBtn.addEventListener("click", togglePause);
+    els.finishBtn.addEventListener("click", () => finishSession(false));
+    els.cancelBtn.addEventListener("click", cancelSession);
+    $("#subjectsBtn").addEventListener("click", openSubjects);
+    $("#manageBtn").addEventListener("click", openSubjects);
+    $("#closeModal").addEventListener("click", () => els.modal.classList.remove("open"));
+    els.modal.addEventListener("click", event => { if (event.target === els.modal) els.modal.classList.remove("open"); });
+    $("#addSubjectBtn").addEventListener("click", () => {
+      const input = $("#newSubjectName");
+      const name = input.value.trim();
+      if (!name) return;
+      state.subjects.push({ id: `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`, name, color: $("#newSubjectColor").value });
+      input.value = "";
+      saveState();
+      renderEditor();
+      renderSubjectSelect();
+    });
+    els.editor.addEventListener("change", event => {
+      const id = event.target.dataset.name || event.target.dataset.color;
+      if (!id) return;
+      const subject = state.subjects.find(item => item.id === id);
+      if (!subject) return;
+      if (event.target.dataset.name && event.target.value.trim()) subject.name = event.target.value.trim();
+      if (event.target.dataset.color) subject.color = event.target.value;
+      saveState();
+      renderSubjectSelect();
+      renderDashboard();
+    });
+    els.editor.addEventListener("click", event => {
+      const id = event.target.dataset.removeSubject;
+      if (!id || state.subjects.length === 1) return;
+      state.subjects = state.subjects.filter(subject => subject.id !== id);
+      saveState();
+      renderEditor();
+      renderSubjectSelect();
+      renderDashboard();
+    });
+    els.history.addEventListener("click", event => {
+      const id = event.target.dataset.delete;
+      if (!id) return;
+      state.sessions = state.sessions.filter(session => session.id !== id);
+      saveState();
+      renderDashboard();
+    });
+    window.addEventListener("beforeinstallprompt", event => {
+      event.preventDefault();
+      deferredInstall = event;
+      els.installBtn.style.display = "block";
+    });
+    els.installBtn.addEventListener("click", async () => {
+      if (!deferredInstall) return;
+      deferredInstall.prompt();
+      await deferredInstall.userChoice;
+      deferredInstall = null;
+      els.installBtn.style.display = "none";
+    });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden && state.active) updateTimer(); });
+    window.addEventListener("load", () => {
+      if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
+      if (state.active) {
+        if (state.active.running && !state.active.startedAt) state.active.startedAt = Date.now();
+        openFocus();
+      }
+    });
+  </script>
+</body>
+</html>
