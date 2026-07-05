@@ -4,7 +4,7 @@ FocusFlow is a dependency-free, offline-first study tracker PWA. It includes a r
 
 ## Deploy
 
-focusalll.vercel.app
+https://focusalll-nbcg9gwcb-shivamchaturvedi714-uxs-projects.vercel.app/
 
 
 
